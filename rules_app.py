@@ -3,7 +3,7 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 
-st.set_page_config(page_title="PG Rules Transparency", layout="centered")
+st.set_page_config(page_title="PG Rules", layout="centered")
 
 # -----------------------
 # GOOGLE SHEETS SETUP
@@ -14,65 +14,94 @@ scope = [
 ]
 
 creds = Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"], scopes=scope
+    st.secrets["gcp_service_account"],
+    scopes=scope
 )
 
 client = gspread.authorize(creds)
 
 # -----------------------
-# SHEET IDS (CHANGE THIS)
+# YOUR SHEET IDS
 # -----------------------
-PG_DATA_ID = "YOUR_PG_DATA_SHEET_ID"
-PG_RULES_ID = "YOUR_PG_RULES_SHEET_ID"
+PG_DATA_ID = "1y60dTYBKgkOi7J37jtGK4BkkmUoZF8yD4P5J3xA5q6Q"
+PG_RULES_ID = "10y6pbBrz-4lXbes4c4vnvJymlZFIDkZujLn1oMZaCaE"
 
 # -----------------------
-# LOAD FUNCTION
+# SAFE LOAD FUNCTION 🔥
 # -----------------------
 @st.cache_data
-def load_sheet(sheet_id, sheet_name):
-    sheet = client.open_by_key(sheet_id).worksheet(sheet_name)
-    data = sheet.get_all_records()
-    return pd.DataFrame(data)
+def load_sheet(sheet_id):
+    try:
+        sh = client.open_by_key(sheet_id)
+
+        try:
+            worksheet = sh.worksheet("Sheet1")
+        except:
+            worksheet = sh.get_worksheet(0)
+
+        data = worksheet.get_all_records()
+        return pd.DataFrame(data)
+
+    except Exception as e:
+        st.error(f"❌ Sheet Load Error: {e}")
+        return pd.DataFrame()
 
 # -----------------------
 # LOAD DATA
 # -----------------------
-pg_df = load_sheet(PG_DATA_ID, "Sheet1")
-rules_df = load_sheet(PG_RULES_ID, "Sheet1")
+pg_df = load_sheet(PG_DATA_ID)
+rules_df = load_sheet(PG_RULES_ID)
 
 # -----------------------
 # VALIDATION
 # -----------------------
+if pg_df.empty:
+    st.error("❌ PG Data not loaded")
+    st.stop()
+
+if rules_df.empty:
+    st.error("❌ Rules Data not loaded")
+    st.stop()
+
+# Normalize column names (avoid case issues)
+pg_df.columns = pg_df.columns.str.strip().str.lower()
+rules_df.columns = rules_df.columns.str.strip().str.lower()
+
+# -----------------------
+# CHECK pg_id
+# -----------------------
 if "pg_id" not in pg_df.columns or "pg_id" not in rules_df.columns:
-    st.error("❌ 'pg_id' column missing in sheets")
+    st.error("❌ 'pg_id' column missing")
+    st.write("PG Data Columns:", pg_df.columns)
+    st.write("Rules Columns:", rules_df.columns)
     st.stop()
 
 # -----------------------
 # MERGE DATA
 # -----------------------
-df = pg_df.merge(rules_df, on="pg_id", how="left")
+df = pd.merge(pg_df, rules_df, on="pg_id", how="left")
 
 # -----------------------
 # SAFE FUNCTION
 # -----------------------
-def safe(val):
-    if val is None or val == "":
+def safe(x):
+    if pd.isna(x) or x == "":
         return "Not mentioned"
-    return val
+    return x
 
 # -----------------------
-# TITLE
+# UI
 # -----------------------
 st.title("📜 PG Rules Transparency")
 st.caption("Hidden rules levu… booking mundhe anni clear ga chupistham ✅")
 
 # -----------------------
-# SEARCH (OPTIONAL 🔥)
+# SEARCH
 # -----------------------
-search = st.text_input("🔍 Search PG name")
+search = st.text_input("🔍 Search PG")
 
 if search:
-    df = df[df["pg_name"].str.contains(search, case=False, na=False)]
+    df = df[df["pg_name"].astype(str).str.contains(search, case=False, na=False)]
 
 # -----------------------
 # DISPLAY
@@ -80,74 +109,66 @@ if search:
 for _, row in df.iterrows():
 
     st.divider()
-
-    # BASIC INFO
     st.subheader(f"🏢 {safe(row.get('pg_name'))}")
 
-    # -----------------------
-    # RULES UI 🔥
-    # -----------------------
     st.markdown("### 📜 No Hidden Rules")
 
     # 💰 MONEY
-    with st.expander("💰 Money Terms"):
-        st.write(f"Rent: ₹{safe(row.get('rent'))}")
-        st.write(f"Advance: ₹{safe(row.get('advance'))}")
-        st.write(f"Refund: {safe(row.get('refund_policy'))}")
+    with st.expander("💰 Money"):
+        st.write("Rent:", safe(row.get("rent")))
+        st.write("Advance:", safe(row.get("advance")))
+        st.write("Refund:", safe(row.get("refund_policy")))
 
     # 📅 NOTICE
-    with st.expander("📅 Notice Period"):
-        st.write(f"{safe(row.get('notice_days'))} days mandatory")
+    with st.expander("📅 Notice"):
+        st.write("Notice Days:", safe(row.get("notice_days")))
 
     # 🍛 FOOD
-    with st.expander("🍛 Food Details"):
-        st.write(f"Breakfast: {safe(row.get('breakfast_time'))}")
-        st.write(f"Dinner: {safe(row.get('dinner_time'))}")
+    with st.expander("🍛 Food"):
+        st.write("Breakfast:", safe(row.get("breakfast_time")))
+        st.write("Dinner:", safe(row.get("dinner_time")))
 
     # 🚫 RULES
-    with st.expander("🚫 PG Rules"):
-        st.write(f"Guests Allowed: {safe(row.get('guests_allowed'))}")
-        st.write(f"Curfew: {safe(row.get('curfew'))}")
-        st.write(f"Cleaning: {safe(row.get('cleaning'))}")
+    with st.expander("🚫 Rules"):
+        st.write("Guests:", safe(row.get("guests_allowed")))
+        st.write("Curfew:", safe(row.get("curfew")))
+        st.write("Cleaning:", safe(row.get("cleaning")))
 
     # -----------------------
-    # SMART WARNINGS 🔥
+    # ALERTS
     # -----------------------
-    st.markdown("### ⚠️ Important Alerts")
+    st.markdown("### ⚠️ Alerts")
 
-    # Guests
     if str(row.get("guests_allowed")).lower() == "no":
         st.warning("🚫 Guests not allowed")
 
-    # Notice
     try:
         if int(row.get("notice_days", 0)) > 30:
             st.warning("⏳ Long notice period")
     except:
         pass
 
-    # Refund
     if row.get("refund_policy") and "non" in str(row.get("refund_policy")).lower():
-        st.error("❗ Partial / Non-refundable")
+        st.error("❗ Non-refundable / partial refund")
 
     # -----------------------
-    # STRICTNESS SCORE 🔥
+    # STRICTNESS SCORE
     # -----------------------
-    strict_score = 0
+    score = 0
 
     if str(row.get("guests_allowed")).lower() == "no":
-        strict_score += 1
+        score += 1
 
     try:
         if int(row.get("notice_days", 0)) > 15:
-            strict_score += 1
+            score += 1
     except:
         pass
 
     if row.get("curfew"):
-        strict_score += 1
+        score += 1
 
-    st.info(f"🔒 PG Strictness Score: {strict_score}/3")
+    st.info(f"🔒 Strictness Score: {score}/3")
 
 # -----------------------
 # EMPTY STATE
