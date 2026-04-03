@@ -3,9 +3,11 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 
-st.title("🏠 No Hidden Rules")
+st.set_page_config(page_title="PG Rules Combined", layout="centered")
 
-# ---------------- GOOGLE SHEETS ----------------
+st.title("🏠 No Hidden Rules (2 Sheet Integration)")
+
+# ---------------- GOOGLE CONNECT ----------------
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
@@ -17,27 +19,40 @@ creds = Credentials.from_service_account_info(
 
 client = gspread.authorize(creds)
 
-SHEET_ID = "1y60dTYBKgkOi7J37jtGK4BkkmUoZF8yD4P5J3xA5q6Q"
+# ---------------- SHEET IDS ----------------
+PG_DATA_ID = "PG_DATA_SHEET_ID_HERE"
+PG_RULES_ID = "PG_RULES_SHEET_ID_HERE"
 
-sheet = client.open_by_key(SHEET_ID).worksheet("rules")
+# ---------------- LOAD PG DATA ----------------
+pg_sheet = client.open_by_key(PG_DATA_ID).worksheet("Sheet1")
+pg_data = pd.DataFrame(pg_sheet.get_all_records())
 
-data = sheet.get_all_records()
-df = pd.DataFrame(data)
+pg_data.columns = pg_data.columns.str.strip().str.lower()
 
-# ---------------- CLEAN ----------------
-df.columns = df.columns.str.strip().str.lower()
+# ---------------- LOAD RULES DATA ----------------
+rules_sheet = client.open_by_key(PG_RULES_ID).worksheet("rules")
+rules_data = pd.DataFrame(rules_sheet.get_all_records())
 
-# ---------------- PG SELECT ----------------
-pg_list = df["pg_id"].astype(str).tolist()
-selected_pg = st.selectbox("Select PG", pg_list)
+rules_data.columns = rules_data.columns.str.strip().str.lower()
 
-pg = df[df["pg_id"].astype(str) == selected_pg].iloc[0]
+# ---------------- SELECT PG ----------------
+pg_names = pg_data["pg_name"].dropna().unique().tolist()
+selected_pg = st.selectbox("🔍 Select PG", pg_names)
+
+# ---------------- MATCH RULES ----------------
+pg_rules = rules_data[rules_data["pg_name"] == selected_pg]
+
+if pg_rules.empty:
+    st.error("❌ Rules not found for this PG")
+    st.stop()
+
+pg = pg_rules.iloc[0]
 
 # ---------------- UI ----------------
-st.subheader(f"🏠 PG ID: {pg['pg_id']}")
+st.subheader(f"🏠 {selected_pg}")
 
 st.markdown(f"""
-<div style="background:#FFD84D;padding:20px;border-radius:10px">
+<div style="background:#FFD84D;padding:20px;border-radius:12px">
 
 <h3>RULES & REGULATIONS</h3>
 
@@ -45,12 +60,12 @@ st.markdown(f"""
 <ul>
 <li>Rent: ₹{pg.get('rent')}</li>
 <li>Advance: ₹{pg.get('advance')}</li>
-<li>Refund Policy: {pg.get('refund_policy')}</li>
+<li>Refund: {pg.get('refund_policy')}</li>
 </ul>
 
 <h4>📅 Notice</h4>
 <ul>
-<li>{pg.get('notice_days')} days</li>
+<li>{pg.get('notice_days')} days mandatory</li>
 </ul>
 
 <h4>📜 Rules</h4>
@@ -71,10 +86,10 @@ Dinner: {pg.get('dinner_time')}
 """, unsafe_allow_html=True)
 
 # ---------------- CONFIRM ----------------
-agree = st.checkbox("I agree to rules")
+agree = st.checkbox("I agree to PG rules")
 
 if agree:
     if st.button("Confirm Booking"):
-        st.success("Booking Confirmed 🎉")
+        st.success("🎉 Booking Confirmed!")
 else:
-    st.warning("Accept rules to continue")
+    st.warning("⚠️ Accept rules to continue")
