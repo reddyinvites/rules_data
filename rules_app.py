@@ -81,10 +81,28 @@ if role == "User":
     <li>{pg.get('notice_days')} days</li>
     </ul>
 
-    <h4>📜 Rules</h4>
+    <h4>📜 Basic Rules</h4>
     <ul>
     <li>Guests: {pg.get('guests_allowed')}</li>
     <li>Cleaning: {pg.get('cleaning')}</li>
+    </ul>
+
+    <h4>🔒 Advanced Rules</h4>
+    <ul>
+    <li>Curfew: {pg.get('curfew')}</li>
+    <li>Smoking: {pg.get('smoking')}</li>
+    <li>Alcohol: {pg.get('alcohol')}</li>
+    <li>Late Entry: {pg.get('late_entry')}</li>
+    <li>Visitors: {pg.get('visitors_time')}</li>
+    </ul>
+
+    <h4>🏠 Facilities</h4>
+    <ul>
+    <li>WiFi: {pg.get('wifi')}</li>
+    <li>Laundry: {pg.get('laundry')}</li>
+    <li>Parking: {pg.get('parking')}</li>
+    <li>Power Backup: {pg.get('power_backup')}</li>
+    <li>Room Type: {pg.get('room_type')}</li>
     </ul>
 
     <hr>
@@ -124,9 +142,23 @@ if role == "Admin":
     st.markdown("### 📅 Notice")
     notice_days = st.number_input("Notice Days", min_value=0)
 
-    st.markdown("### 📜 Rules")
+    st.markdown("### 📜 Basic Rules")
     guests_allowed = st.selectbox("Guests Allowed", ["Yes", "No"])
     cleaning = st.selectbox("Cleaning", ["Daily", "Weekly", "Monthly"])
+
+    st.markdown("### 🔒 Advanced Rules")
+    curfew = st.text_input("Curfew Time")
+    smoking = st.selectbox("Smoking Allowed", ["No", "Yes"])
+    alcohol = st.selectbox("Alcohol Allowed", ["No", "Yes"])
+    late_entry = st.selectbox("Late Entry Allowed", ["No", "Yes"])
+    visitors_time = st.text_input("Visitors Timing")
+
+    st.markdown("### 🏠 Facilities")
+    wifi = st.selectbox("WiFi", ["Yes", "No"])
+    laundry = st.selectbox("Laundry", ["Yes", "No"])
+    parking = st.selectbox("Parking", ["Yes", "No"])
+    power_backup = st.selectbox("Power Backup", ["Yes", "No"])
+    room_type = st.selectbox("Room Type", ["AC", "Non-AC", "Both"])
 
     st.markdown("### 🍛 Food")
     breakfast_time = st.text_input("Breakfast Time")
@@ -144,6 +176,16 @@ if role == "Admin":
             dinner_time,
             guests_allowed,
             cleaning,
+            curfew,
+            smoking,
+            alcohol,
+            late_entry,
+            visitors_time,
+            wifi,
+            laundry,
+            parking,
+            power_backup,
+            room_type,
             str(datetime.now())
         ])
 
