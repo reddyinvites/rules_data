@@ -32,24 +32,33 @@ try:
     pg_df = pd.DataFrame(pg_sheet.get_all_records())
     rules_df = pd.DataFrame(rules_sheet.get_all_records())
 
-except Exception as e:
+except Exception:
     st.error("❌ Google Sheets connection failed. Check permissions.")
     st.stop()
 
-# ---------------- SAFE CLEAN ----------------
+# ---------------- EMPTY CHECK ----------------
+if pg_df.empty:
+    st.error("❌ pg_data Sheet1 is empty")
+    st.stop()
+
+if rules_df.empty:
+    st.error("❌ rules sheet is empty. Please add at least 1 row.")
+    st.stop()
+
+# ---------------- CLEAN ----------------
 pg_df.columns = [str(col).strip().lower() for col in pg_df.columns]
 rules_df.columns = [str(col).strip().lower() for col in rules_df.columns]
 
 pg_df = pg_df.fillna("")
 rules_df = rules_df.fillna("")
 
-# ---------------- CHECK REQUIRED COLUMN ----------------
+# ---------------- REQUIRED COLUMNS ----------------
 if "pg_name" not in pg_df.columns:
-    st.error("❌ pg_data Sheet1 must have 'pg_name' column")
+    st.error("❌ pg_data must have 'pg_name'")
     st.stop()
 
 if "pg_id" not in rules_df.columns:
-    st.error("❌ pg_rules must have 'pg_id' column")
+    st.error("❌ pg_rules must have 'pg_id'")
     st.stop()
 
 # ---------------- NORMALIZE ----------------
@@ -57,11 +66,7 @@ pg_df["pg_name"] = pg_df["pg_name"].astype(str).str.strip().str.lower()
 rules_df["pg_id"] = rules_df["pg_id"].astype(str).str.strip().str.lower()
 
 # ---------------- SELECT PG ----------------
-pg_names = pg_df["pg_name"].dropna().unique().tolist()
-
-if not pg_names:
-    st.warning("⚠️ No PG data found")
-    st.stop()
+pg_names = pg_df["pg_name"].unique().tolist()
 
 selected_pg = st.selectbox("🔍 Select PG", pg_names)
 
@@ -71,7 +76,7 @@ selected_pg_clean = selected_pg.strip().lower()
 pg_rules = rules_df[rules_df["pg_id"] == selected_pg_clean]
 
 if pg_rules.empty:
-    st.error("❌ Rules not found for this PG (Check pg_name vs pg_id match)")
+    st.error("❌ No rules found for this PG (pg_name ≠ pg_id)")
     st.stop()
 
 pg = pg_rules.iloc[0]
