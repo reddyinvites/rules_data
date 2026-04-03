@@ -1,125 +1,67 @@
 import streamlit as st
-import pandas as pd
-import gspread
-from google.oauth2.service_account import Credentials
 
-st.set_page_config(page_title="PG Rules", layout="centered")
+def show_pg_rules(pg_data):
 
-# -----------------------
-# GOOGLE SETUP
-# -----------------------
-scope = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive"
-]
+    st.markdown(f"""
+    <div style="
+        background-color:#FFD84D;
+        padding:20px;
+        border-radius:12px;
+        border:3px solid #0097A7;
+        font-family:Arial;
+    ">
 
-creds = Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"],
-    scopes=scope
-)
+    <h2 style="color:#006064; text-align:center;">
+    RULES & REGULATIONS
+    </h2>
 
-client = gspread.authorize(creds)
+    <h4>💰 Money</h4>
+    <ul>
+    <li>Rent: <b>₹{pg_data['rent']}</b></li>
+    <li>Advance: <b>₹{pg_data['advance']}</b></li>
+    <li>Refund: <b>₹{pg_data['refund']}</b></li>
+    </ul>
 
-# -----------------------
-# SHEET IDS
-# -----------------------
-PG_DATA_ID = "1y60dTYBKgkOi7J37jtGK4BkkmUoZF8yD4P5J3xA5q6Q"
-PG_RULES_ID = "10y6pbBrz-4lXbes4c4vnvJymlZFIDkZujLn1oMZaCaE"
+    <h4>📅 Notice</h4>
+    <ul>
+    <li>{pg_data['notice_days']} days mandatory</li>
+    </ul>
 
-# -----------------------
-# LOAD FUNCTION (STRONG 🔥)
-# -----------------------
-def load_sheet(sheet_id, name):
-    try:
-        sh = client.open_by_key(sheet_id)
+    <h4>📜 Rules</h4>
+    <ol>
+    <li>Rent before 5th</li>
+    <li>Guests: ₹{pg_data['guest_charge']}/day</li>
+    <li>Curfew: {pg_data['curfew']}</li>
+    <li>No smoking/alcohol</li>
+    <li>Damage charges apply</li>
+    <li>Lost key: ₹300</li>
+    </ol>
 
-        # try all worksheets one by one
-        for ws in sh.worksheets():
-            data = ws.get_all_records()
-            if len(data) > 0:
-                st.success(f"✅ Loaded {name} from sheet: {ws.title}")
-                return pd.DataFrame(data)
+    <hr>
 
-        st.warning(f"⚠️ {name} sheet is empty")
-        return pd.DataFrame()
+    <h4>🍛 FOOD TIMINGS</h4>
+    <p>
+    Breakfast: <b>{pg_data['breakfast']}</b><br>
+    Lunch: <b>{pg_data['lunch']}</b><br>
+    Dinner: <b>{pg_data['dinner']}</b>
+    </p>
 
-    except Exception as e:
-        st.error(f"❌ Error loading {name}: {e}")
-        return pd.DataFrame()
+    <p style="color:red; font-weight:bold;">
+    Note: Follow rules strictly
+    </p>
 
-# -----------------------
-# LOAD DATA
-# -----------------------
-pg_df = load_sheet(PG_DATA_ID, "PG Data")
-rules_df = load_sheet(PG_RULES_ID, "Rules Data")
+    </div>
+    """, unsafe_allow_html=True)
 
-# -----------------------
-# DEBUG SHOW 🔥
-# -----------------------
-st.write("PG Data Rows:", len(pg_df))
-st.write("Rules Data Rows:", len(rules_df))
 
-# -----------------------
-# STOP IF EMPTY
-# -----------------------
-if pg_df.empty:
-    st.error("❌ PG Data not loaded")
-    st.stop()
+def rules_agreement():
 
-if rules_df.empty:
-    st.error("❌ Rules Data not loaded")
-    st.stop()
+    st.markdown("### ✅ Confirm Rules")
 
-# -----------------------
-# CLEAN COLUMNS
-# -----------------------
-pg_df.columns = pg_df.columns.str.strip().str.lower()
-rules_df.columns = rules_df.columns.str.strip().str.lower()
+    agree = st.checkbox("I agree to PG rules")
 
-# -----------------------
-# CHECK pg_id
-# -----------------------
-if "pg_id" not in pg_df.columns or "pg_id" not in rules_df.columns:
-    st.error("❌ pg_id missing")
-    st.write("PG columns:", pg_df.columns)
-    st.write("Rules columns:", rules_df.columns)
-    st.stop()
-
-# -----------------------
-# MERGE
-# -----------------------
-df = pd.merge(pg_df, rules_df, on="pg_id", how="left")
-
-# -----------------------
-# SAFE
-# -----------------------
-def safe(x):
-    if pd.isna(x) or x == "":
-        return "Not mentioned"
-    return x
-
-# -----------------------
-# UI
-# -----------------------
-st.title("📜 PG Rules Transparency")
-
-for _, row in df.iterrows():
-    st.divider()
-    st.subheader(safe(row.get("pg_name")))
-
-    with st.expander("💰 Money"):
-        st.write("Rent:", safe(row.get("rent")))
-        st.write("Advance:", safe(row.get("advance")))
-        st.write("Refund:", safe(row.get("refund_policy")))
-
-    with st.expander("📅 Notice"):
-        st.write("Days:", safe(row.get("notice_days")))
-
-    with st.expander("🍛 Food"):
-        st.write("Breakfast:", safe(row.get("breakfast_time")))
-        st.write("Dinner:", safe(row.get("dinner_time")))
-
-    with st.expander("🚫 Rules"):
-        st.write("Guests:", safe(row.get("guests_allowed")))
-        st.write("Curfew:", safe(row.get("curfew")))
-        st.write("Cleaning:", safe(row.get("cleaning")))
+    if agree:
+        if st.button("✅ Confirm Booking"):
+            st.success("🎉 Booking Confirmed!")
+    else:
+        st.warning("⚠️ Accept rules to continue")
