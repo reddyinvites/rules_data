@@ -1,16 +1,61 @@
 import streamlit as st
 
-# -------------------------
-# PAGE CONFIG
-# -------------------------
-st.set_page_config(page_title="PG Rules", layout="centered")
+st.set_page_config(page_title="Dynamic PG Rules", layout="centered")
 
-st.title("🏠 No Hidden Rules")
+st.title("🏠 No Hidden Rules (Dynamic PG)")
 
 # -------------------------
-# FUNCTION: RULES UI
+# MULTIPLE PG DATA
 # -------------------------
-def show_pg_rules(pg_data):
+pg_list = {
+    "Sri Manjunatha PG": {
+        "rent": 6000,
+        "advance": 2000,
+        "refund": 1000,
+        "notice_days": 30,
+        "guest_charge": 350,
+        "curfew": "10 PM",
+        "breakfast": "7:30 – 10:00 AM",
+        "lunch": "12:30 – 2:30 PM",
+        "dinner": "7:30 – 10:00 PM"
+    },
+    "Venkateshwara PG": {
+        "rent": 7500,
+        "advance": 3000,
+        "refund": 1500,
+        "notice_days": 15,
+        "guest_charge": 500,
+        "curfew": "9 PM",
+        "breakfast": "8:00 – 10:30 AM",
+        "lunch": "1:00 – 3:00 PM",
+        "dinner": "8:00 – 10:30 PM"
+    },
+    "Sai Residency PG": {
+        "rent": 5000,
+        "advance": 1500,
+        "refund": 500,
+        "notice_days": 20,
+        "guest_charge": 200,
+        "curfew": "No Curfew",
+        "breakfast": "7:00 – 9:30 AM",
+        "lunch": "12:00 – 2:00 PM",
+        "dinner": "7:00 – 9:00 PM"
+    }
+}
+
+# -------------------------
+# PG SELECTION
+# -------------------------
+selected_pg = st.selectbox("🔍 Select PG", list(pg_list.keys()))
+
+pg_data = pg_list[selected_pg]
+
+# -------------------------
+# RULES UI FUNCTION
+# -------------------------
+def show_pg_rules(pg_name, pg_data):
+
+    st.subheader(f"🏠 {pg_name}")
 
     st.markdown(f"""
     <div style="
@@ -21,43 +66,36 @@ def show_pg_rules(pg_data):
         font-family:Arial;
     ">
 
-    <h2 style="color:#006064; text-align:center;">
-    RULES & REGULATIONS
-    </h2>
+    <h3 style="text-align:center;">RULES & REGULATIONS</h3>
 
     <h4>💰 Money</h4>
     <ul>
     <li>Rent: <b>₹{pg_data['rent']}</b></li>
     <li>Advance: <b>₹{pg_data['advance']}</b></li>
-    <li>Refund: <b>₹{pg_data['refund']}</b> (remaining non-refundable)</li>
+    <li>Refund: <b>₹{pg_data['refund']}</b></li>
     </ul>
 
     <h4>📅 Notice</h4>
     <ul>
-    <li>{pg_data['notice_days']} days mandatory before vacating</li>
+    <li>{pg_data['notice_days']} days mandatory</li>
     </ul>
 
     <h4>📜 Rules</h4>
     <ol>
-    <li>Rent should be paid before 5th of every month</li>
-    <li>Guests allowed with ₹{pg_data['guest_charge']}/day</li>
-    <li>Curfew time: {pg_data['curfew']}</li>
-    <li>Smoking & alcohol not allowed</li>
-    <li>Damage charges applicable</li>
-    <li>Lost key fine: ₹300</li>
+    <li>Rent before 5th</li>
+    <li>Guests: ₹{pg_data['guest_charge']}/day</li>
+    <li>Curfew: {pg_data['curfew']}</li>
+    <li>No smoking/alcohol</li>
+    <li>Damage charges apply</li>
     </ol>
 
     <hr>
 
-    <h4 style="color:#BF360C;">🍛 FOOD TIMINGS</h4>
+    <h4>🍛 FOOD TIMINGS</h4>
     <p>
     Breakfast: <b>{pg_data['breakfast']}</b><br>
     Lunch: <b>{pg_data['lunch']}</b><br>
     Dinner: <b>{pg_data['dinner']}</b>
-    </p>
-
-    <p style="color:red; font-weight:bold;">
-    Note: Rules follow cheyakapothe immediate vacate cheyyali.
     </p>
 
     </div>
@@ -65,39 +103,23 @@ def show_pg_rules(pg_data):
 
 
 # -------------------------
-# FUNCTION: AGREEMENT
+# AGREEMENT FUNCTION
 # -------------------------
 def rules_agreement():
 
-    st.markdown("### ✅ Confirmation")
+    st.markdown("### ✅ Confirm Rules")
 
-    agree = st.checkbox("I have read and agree to all PG rules")
+    agree = st.checkbox("I agree to PG rules")
 
     if agree:
-        if st.button("✅ Confirm & Book"):
-            st.success("🎉 Booking Confirmed! No Hidden Rules 👍")
+        if st.button("✅ Confirm Booking"):
+            st.success("🎉 Booking Confirmed!")
     else:
-        st.warning("⚠️ Please accept rules to continue")
+        st.warning("⚠️ Accept rules to continue")
 
 
 # -------------------------
-# MAIN EXECUTION (IMPORTANT)
+# DISPLAY
 # -------------------------
-if __name__ == "__main__":
-
-    # SAMPLE DATA (you can change later)
-    pg_data = {
-        "rent": 6000,
-        "advance": 2000,
-        "refund": 1000,
-        "notice_days": 30,
-        "guest_charge": 350,
-        "curfew": "10:00 PM",
-        "breakfast": "7:30 – 10:00 AM",
-        "lunch": "12:30 – 2:30 PM",
-        "dinner": "7:30 – 10:00 PM"
-    }
-
-    # SHOW UI
-    show_pg_rules(pg_data)
-    rules_agreement()
+show_pg_rules(selected_pg, pg_data)
+rules_agreement()
