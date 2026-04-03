@@ -1,61 +1,49 @@
 import streamlit as st
+import pandas as pd
+import gspread
+from google.oauth2.service_account import Credentials
 
 st.set_page_config(page_title="Dynamic PG Rules", layout="centered")
 
-st.title("🏠 No Hidden Rules (Dynamic PG)")
+st.title("🏠 No Hidden Rules (Live Data)")
 
 # -------------------------
-# MULTIPLE PG DATA
+# GOOGLE SHEETS CONNECTION
 # -------------------------
-pg_list = {
-    "Sri Manjunatha PG": {
-        "rent": 6000,
-        "advance": 2000,
-        "refund": 1000,
-        "notice_days": 30,
-        "guest_charge": 350,
-        "curfew": "10 PM",
-        "breakfast": "7:30 – 10:00 AM",
-        "lunch": "12:30 – 2:30 PM",
-        "dinner": "7:30 – 10:00 PM"
-    },
-    "Venkateshwara PG": {
-        "rent": 7500,
-        "advance": 3000,
-        "refund": 1500,
-        "notice_days": 15,
-        "guest_charge": 500,
-        "curfew": "9 PM",
-        "breakfast": "8:00 – 10:30 AM",
-        "lunch": "1:00 – 3:00 PM",
-        "dinner": "8:00 – 10:30 PM"
-    },
-    "Sai Residency PG": {
-        "rent": 5000,
-        "advance": 1500,
-        "refund": 500,
-        "notice_days": 20,
-        "guest_charge": 200,
-        "curfew": "No Curfew",
-        "breakfast": "7:00 – 9:30 AM",
-        "lunch": "12:00 – 2:00 PM",
-        "dinner": "7:00 – 9:00 PM"
-    }
-}
+scope = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"], scopes=scope
+)
+
+client = gspread.authorize(creds)
+
+# 👉 YOUR SHEET ID
+SHEET_ID = "1y60dTYBKgkOiXXXXXXXXXXXX"  # replace with your real ID
+
+sheet = client.open_by_key(SHEET_ID).worksheet("Sheet1")
+
+data = sheet.get_all_records()
+df = pd.DataFrame(data)
 
 # -------------------------
-# PG SELECTION
+# PG SELECT
 # -------------------------
-selected_pg = st.selectbox("🔍 Select PG", list(pg_list.keys()))
+pg_names = df["pg_name"].unique().tolist()
 
-pg_data = pg_list[selected_pg]
+selected_pg = st.selectbox("🔍 Select PG", pg_names)
+
+pg_data = df[df["pg_name"] == selected_pg].iloc[0]
 
 # -------------------------
-# RULES UI FUNCTION
+# RULES UI
 # -------------------------
-def show_pg_rules(pg_name, pg_data):
+def show_pg_rules(pg):
 
-    st.subheader(f"🏠 {pg_name}")
+    st.subheader(f"🏠 {pg['pg_name']}")
 
     st.markdown(f"""
     <div style="
@@ -70,21 +58,21 @@ def show_pg_rules(pg_name, pg_data):
 
     <h4>💰 Money</h4>
     <ul>
-    <li>Rent: <b>₹{pg_data['rent']}</b></li>
-    <li>Advance: <b>₹{pg_data['advance']}</b></li>
-    <li>Refund: <b>₹{pg_data['refund']}</b></li>
+    <li>Rent: <b>₹{pg['rent']}</b></li>
+    <li>Advance: <b>₹{pg['advance']}</b></li>
+    <li>Refund: <b>₹{pg['refund']}</b></li>
     </ul>
 
     <h4>📅 Notice</h4>
     <ul>
-    <li>{pg_data['notice_days']} days mandatory</li>
+    <li>{pg['notice_days']} days mandatory</li>
     </ul>
 
     <h4>📜 Rules</h4>
     <ol>
     <li>Rent before 5th</li>
-    <li>Guests: ₹{pg_data['guest_charge']}/day</li>
-    <li>Curfew: {pg_data['curfew']}</li>
+    <li>Guests: ₹{pg['guest_charge']}/day</li>
+    <li>Curfew: {pg['curfew']}</li>
     <li>No smoking/alcohol</li>
     <li>Damage charges apply</li>
     </ol>
@@ -93,9 +81,9 @@ def show_pg_rules(pg_name, pg_data):
 
     <h4>🍛 FOOD TIMINGS</h4>
     <p>
-    Breakfast: <b>{pg_data['breakfast']}</b><br>
-    Lunch: <b>{pg_data['lunch']}</b><br>
-    Dinner: <b>{pg_data['dinner']}</b>
+    Breakfast: <b>{pg['breakfast']}</b><br>
+    Lunch: <b>{pg['lunch']}</b><br>
+    Dinner: <b>{pg['dinner']}</b>
     </p>
 
     </div>
@@ -103,10 +91,9 @@ def show_pg_rules(pg_name, pg_data):
 
 
 # -------------------------
-# AGREEMENT FUNCTION
+# AGREEMENT
 # -------------------------
 def rules_agreement():
-
     st.markdown("### ✅ Confirm Rules")
 
     agree = st.checkbox("I agree to PG rules")
@@ -121,5 +108,5 @@ def rules_agreement():
 # -------------------------
 # DISPLAY
 # -------------------------
-show_pg_rules(selected_pg, pg_data)
+show_pg_rules(pg_data)
 rules_agreement()
