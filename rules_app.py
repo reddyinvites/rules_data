@@ -3,11 +3,11 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 
-st.set_page_config(page_title="PG Rules Combined", layout="centered")
+st.set_page_config(page_title="PG Rules System", layout="centered")
 
-st.title("🏠 No Hidden Rules (2 Sheet Integration)")
+st.title("🏠 No Hidden Rules (Live Integration)")
 
-# ---------------- GOOGLE CONNECT ----------------
+# ---------------- GOOGLE AUTH ----------------
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
@@ -19,37 +19,43 @@ creds = Credentials.from_service_account_info(
 
 client = gspread.authorize(creds)
 
-# ---------------- SHEET IDS ----------------
-PG_DATA_ID = "PG_DATA_SHEET_ID_HERE"
-PG_RULES_ID = "PG_RULES_SHEET_ID_HERE"
+# ---------------- YOUR SHEET IDS ----------------
+PG_DATA_ID = "1y60dTYBKgkOi7J37jtGK4BkkmUoZF8yD4P5J3xA5q6Q"
+PG_RULES_ID = "10y6pbBrz-4lXbes4c4vnvJymlZFIDkZujLn1oMZaCaE"
 
 # ---------------- LOAD PG DATA ----------------
 pg_sheet = client.open_by_key(PG_DATA_ID).worksheet("Sheet1")
-pg_data = pd.DataFrame(pg_sheet.get_all_records())
-
-pg_data.columns = pg_data.columns.str.strip().str.lower()
+pg_df = pd.DataFrame(pg_sheet.get_all_records())
 
 # ---------------- LOAD RULES DATA ----------------
 rules_sheet = client.open_by_key(PG_RULES_ID).worksheet("rules")
-rules_data = pd.DataFrame(rules_sheet.get_all_records())
+rules_df = pd.DataFrame(rules_sheet.get_all_records())
 
-rules_data.columns = rules_data.columns.str.strip().str.lower()
+# ---------------- CLEAN COLUMNS ----------------
+pg_df.columns = pg_df.columns.str.strip().str.lower()
+rules_df.columns = rules_df.columns.str.strip().str.lower()
 
-# ---------------- SELECT PG ----------------
-pg_names = pg_data["pg_name"].dropna().unique().tolist()
+# ---------------- IMPORTANT: NORMALIZE NAMES ----------------
+pg_df["pg_name"] = pg_df["pg_name"].astype(str).str.strip().str.lower()
+rules_df["pg_id"] = rules_df["pg_id"].astype(str).str.strip().str.lower()
+
+# ---------------- PG SELECT ----------------
+pg_names = pg_df["pg_name"].dropna().unique().tolist()
 selected_pg = st.selectbox("🔍 Select PG", pg_names)
 
-# ---------------- MATCH RULES ----------------
-pg_rules = rules_data[rules_data["pg_name"] == selected_pg]
+# ---------------- MATCH LOGIC ----------------
+selected_pg_clean = selected_pg.strip().lower()
+
+pg_rules = rules_df[rules_df["pg_id"] == selected_pg_clean]
 
 if pg_rules.empty:
-    st.error("❌ Rules not found for this PG")
+    st.error("❌ Rules not found for this PG (Check pg_name vs pg_id match)")
     st.stop()
 
 pg = pg_rules.iloc[0]
 
 # ---------------- UI ----------------
-st.subheader(f"🏠 {selected_pg}")
+st.subheader(f"🏠 {selected_pg.title()}")
 
 st.markdown(f"""
 <div style="background:#FFD84D;padding:20px;border-radius:12px">
@@ -89,7 +95,7 @@ Dinner: {pg.get('dinner_time')}
 agree = st.checkbox("I agree to PG rules")
 
 if agree:
-    if st.button("Confirm Booking"):
+    if st.button("✅ Confirm Booking"):
         st.success("🎉 Booking Confirmed!")
 else:
     st.warning("⚠️ Accept rules to continue")
