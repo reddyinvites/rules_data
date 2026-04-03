@@ -1,5 +1,6 @@
 import streamlit as st
 import gspread
+import pandas as pd
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
@@ -19,13 +20,30 @@ creds = Credentials.from_service_account_info(
 
 client = gspread.authorize(creds)
 
-SHEET_ID = "10y6pbBrz-4lXbes4c4vnvJymlZFIDkZujLn1oMZaCaE"
-sheet = client.open_by_key(SHEET_ID).worksheet("rules")
+# ---------------- SHEETS ----------------
+PG_DATA_ID = "1y60dTYBKgkOi7J37jtGK4BkkmUoZF8yD4P5J3xA5q6Q"
+RULES_ID = "10y6pbBrz-4lXbes4c4vnvJymlZFIDkZujLn1oMZaCaE"
+
+# ---------------- LOAD PG NAMES ----------------
+pg_sheet = client.open_by_key(PG_DATA_ID).worksheet("Sheet1")
+pg_df = pd.DataFrame(pg_sheet.get_all_records())
+
+pg_df.columns = [str(c).strip().lower() for c in pg_df.columns]
+
+if "pg_name" not in pg_df.columns:
+    st.error("❌ pg_data must have 'pg_name'")
+    st.stop()
+
+pg_names = pg_df["pg_name"].dropna().unique().tolist()
+
+# ---------------- RULES SHEET ----------------
+rules_sheet = client.open_by_key(RULES_ID).worksheet("rules")
 
 # ---------------- FORM ----------------
 st.subheader("➕ Add / Update PG Rules")
 
-pg_name = st.text_input("PG Name")
+# ✅ DROPDOWN INSTEAD OF TEXT INPUT
+pg_name = st.selectbox("Select PG", pg_names)
 
 st.markdown("### 💰 Money")
 rent = st.number_input("Rent", min_value=0)
@@ -46,20 +64,17 @@ dinner_time = st.text_input("Dinner Time")
 # ---------------- SAVE ----------------
 if st.button("💾 Save Rules"):
 
-    if not pg_name:
-        st.error("PG Name required")
-    else:
-        sheet.append_row([
-            pg_name.strip().lower(),
-            rent,
-            advance,
-            refund_policy,
-            notice_days,
-            breakfast_time,
-            dinner_time,
-            guests_allowed,
-            cleaning,
-            str(datetime.now())
-        ])
+    rules_sheet.append_row([
+        pg_name.strip().lower(),
+        rent,
+        advance,
+        refund_policy,
+        notice_days,
+        breakfast_time,
+        dinner_time,
+        guests_allowed,
+        cleaning,
+        str(datetime.now())
+    ])
 
-        st.success("✅ Rules Saved Successfully!")
+    st.success(f"✅ Rules saved for {pg_name}")
