@@ -25,7 +25,8 @@ client = gspread.authorize(creds)
 PG_DATA_ID = "1y60dTYBKgkOi7J37jtGK4BkkmUoZF8yD4P5J3xA5q6Q"
 RULES_ID = "10y6pbBrz-4lXbes4c4vnvJymlZFIDkZujLn1oMZaCaE"
 
-# ---------------- SAFE LOAD FUNCTION ----------------
+# ---------------- CACHE SHEET LOAD ----------------
+@st.cache_data(ttl=300)
 def load_sheet(sheet_id, sheet_name):
     try:
         sheet = client.open_by_key(sheet_id).worksheet(sheet_name)
@@ -165,6 +166,7 @@ if role == "Admin":
 
         with col2:
             if st.button("🗑 Delete"):
+
                 all_data = rules_sheet.get_all_values()
                 header = all_data[0]
 
@@ -176,6 +178,7 @@ if role == "Admin":
                 rules_sheet.clear()
                 rules_sheet.update("A1", new_data)
 
+                st.cache_data.clear()
                 st.success("🗑 Deleted successfully")
                 st.rerun()
 
@@ -255,6 +258,8 @@ if role == "Admin":
         rules_sheet.clear()
         rules_sheet.update("A1", new_data)
 
+        st.cache_data.clear()
         st.session_state["edit_mode"] = False
+
         st.success("✅ Rules updated successfully")
         st.rerun()
