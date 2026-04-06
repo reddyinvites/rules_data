@@ -8,7 +8,7 @@ st.set_page_config(page_title="PG Rules System", layout="centered")
 
 st.title("🏠 PG Rules System")
 
-# ---------------- ROLE SWITCH ----------------
+# ---------------- ROLE ----------------
 role = st.radio("Login as:", ["User", "Admin"])
 
 # ---------------- GOOGLE AUTH ----------------
@@ -50,6 +50,10 @@ if role == "User":
         client.open_by_key(RULES_ID).worksheet("rules").get_all_records()
     )
 
+    if rules_df.empty:
+        st.warning("⚠️ No rules available")
+        st.stop()
+
     rules_df.columns = [str(c).strip().lower() for c in rules_df.columns]
     rules_df = rules_df.fillna("")
     rules_df["pg_name"] = rules_df["pg_name"].str.strip().str.lower()
@@ -63,6 +67,7 @@ if role == "User":
     pg = pg_rules.iloc[-1]
 
     st.subheader(f"🏠 {selected_pg.title()}")
+    st.info(f"🕒 Last Updated: {pg.get('timestamp','N/A')}")
 
     st.markdown(f"""
     <div style="background:#FFD84D;padding:20px;border-radius:12px">
@@ -128,45 +133,117 @@ if role == "User":
 # =========================
 if role == "Admin":
 
-    st.subheader("➕ Add / Update PG Rules")
+    st.subheader("🛠 Manage PG Rules")
 
     rules_sheet = client.open_by_key(RULES_ID).worksheet("rules")
 
+    rules_df = pd.DataFrame(rules_sheet.get_all_records())
+
+    if not rules_df.empty:
+        rules_df.columns = [str(c).strip().lower() for c in rules_df.columns]
+        rules_df = rules_df.fillna("")
+        rules_df["pg_name"] = rules_df["pg_name"].str.strip().str.lower()
+
     pg_name = st.selectbox("Select PG", pg_names)
 
+    pg_rows = rules_df[rules_df["pg_name"] == pg_name] if not rules_df.empty else pd.DataFrame()
+
+    # ---------------- EXISTING ----------------
+    if not pg_rows.empty:
+        latest = pg_rows.iloc[-1]
+
+        st.info(f"🕒 Last Updated: {latest.get('timestamp','N/A')}")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("✏️ Edit"):
+                st.session_state["edit_mode"] = True
+                st.session_state["edit_data"] = latest.to_dict()
+
+        with col2:
+            if st.button("🗑 Delete"):
+
+                all_data = rules_sheet.get_all_values()
+                header = all_data[0]
+
+                new_data = [header] + [
+                    row for row in all_data[1:]
+                    if row[0].strip().lower() != pg_name
+                ]
+
+                rules_sheet.clear()
+                rules_sheet.update("A1", new_data)
+
+                st.success("🗑 Deleted successfully")
+                st.rerun()
+
+    else:
+        st.warning("No rules found. Add new.")
+
+    # ---------------- SESSION ----------------
+    if "edit_mode" not in st.session_state:
+        st.session_state["edit_mode"] = False
+
+    pg = st.session_state.get("edit_data", {}) if st.session_state["edit_mode"] else {}
+
+    # ---------------- FORM ----------------
     st.markdown("### 💰 Money")
-    rent = st.number_input("Rent", min_value=0)
-    advance = st.number_input("Advance", min_value=0)
-    refund_policy = st.text_input("Refund Policy")
+    rent = st.number_input("Rent", min_value=0, value=int(pg.get("rent", 0)))
+    advance = st.number_input("Advance", min_value=0, value=int(pg.get("advance", 0)))
+    refund_policy = st.text_input("Refund Policy", value=pg.get("refund_policy", ""))
 
     st.markdown("### 📅 Notice")
-    notice_days = st.number_input("Notice Days", min_value=0)
+    notice_days = st.number_input("Notice Days", min_value=0, value=int(pg.get("notice_days", 0)))
 
     st.markdown("### 📜 Basic Rules")
-    guests_allowed = st.selectbox("Guests Allowed", ["Yes", "No"])
-    cleaning = st.selectbox("Cleaning", ["Daily", "Weekly", "Monthly"])
+    guests_allowed = st.selectbox("Guests Allowed", ["Yes", "No"],
+                                 index=0 if pg.get("guests_allowed", "Yes") == "Yes" else 1)
+
+    cleaning = st.selectbox("Cleaning", ["Daily", "Weekly", "Monthly"],
+                           index=["Daily","Weekly","Monthly"].index(pg.get("cleaning","Daily"))
+                           if pg.get("cleaning","Daily") in ["Daily","Weekly","Monthly"] else 0)
 
     st.markdown("### 🔒 Advanced Rules")
-    curfew = st.text_input("Curfew Time")
-    smoking = st.selectbox("Smoking Allowed", ["No", "Yes"])
-    alcohol = st.selectbox("Alcohol Allowed", ["No", "Yes"])
-    late_entry = st.selectbox("Late Entry Allowed", ["No", "Yes"])
-    visitors_time = st.text_input("Visitors Timing")
+    curfew = st.text_input("Curfew Time", value=pg.get("curfew", ""))
+
+    smoking = st.selectbox("Smoking Allowed", ["No", "Yes"],
+                           index=1 if pg.get("smoking") == "Yes" else 0)
+
+    alcohol = st.selectbox("Alcohol Allowed", ["No", "Yes"],
+                           index=1 if pg.get("alcohol") == "Yes" else 0)
+
+    late_entry = st.selectbox("Late Entry Allowed", ["No", "Yes"],
+                             index=1 if pg.get("late_entry") == "Yes" else 0)
+
+    visitors_time = st.text_input("Visitors Timing", value=pg.get("visitors_time", ""))
 
     st.markdown("### 🏠 Facilities")
-    wifi = st.selectbox("WiFi", ["Yes", "No"])
-    laundry = st.selectbox("Laundry", ["Yes", "No"])
-    parking = st.selectbox("Parking", ["Yes", "No"])
-    power_backup = st.selectbox("Power Backup", ["Yes", "No"])
-    room_type = st.selectbox("Room Type", ["AC", "Non-AC", "Both"])
+    wifi = st.selectbox("WiFi", ["Yes", "No"], index=0 if pg.get("wifi") == "Yes" else 1)
+    laundry = st.selectbox("Laundry", ["Yes", "No"], index=0 if pg.get("laundry") == "Yes" else 1)
+    parking = st.selectbox("Parking", ["Yes", "No"], index=0 if pg.get("parking") == "Yes" else 1)
+    power_backup = st.selectbox("Power Backup", ["Yes", "No"], index=0 if pg.get("power_backup") == "Yes" else 1)
+
+    room_type = st.selectbox("Room Type", ["AC", "Non-AC", "Both"],
+                            index=["AC","Non-AC","Both"].index(pg.get("room_type","AC"))
+                            if pg.get("room_type","AC") in ["AC","Non-AC","Both"] else 0)
 
     st.markdown("### 🍛 Food")
-    breakfast_time = st.text_input("Breakfast Time")
-    dinner_time = st.text_input("Dinner Time")
+    breakfast_time = st.text_input("Breakfast Time", value=pg.get("breakfast_time", ""))
+    dinner_time = st.text_input("Dinner Time", value=pg.get("dinner_time", ""))
 
-    if st.button("💾 Save Rules"):
+    # ---------------- SAVE ----------------
+    if st.button("💾 Save / Update"):
 
-        rules_sheet.append_row([
+        all_data = rules_sheet.get_all_values()
+        header = all_data[0]
+
+        new_data = [header] + [
+            row for row in all_data[1:]
+            if row[0].strip().lower() != pg_name
+        ]
+
+        new_data.append([
             pg_name.strip().lower(),
             rent,
             advance,
@@ -189,4 +266,9 @@ if role == "Admin":
             str(datetime.now())
         ])
 
-        st.success(f"✅ Rules saved for {pg_name}")
+        rules_sheet.clear()
+        rules_sheet.update("A1", new_data)
+
+        st.session_state["edit_mode"] = False
+        st.success("✅ Rules updated successfully")
+        st.rerun()
