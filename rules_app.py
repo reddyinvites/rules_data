@@ -4,8 +4,8 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
-st.set_page_config(page_title="PG System", layout="centered")
-st.title("🏠 PG Management System")
+st.set_page_config(page_title="PG Rules System", layout="centered")
+st.title("🏠 PG Rules System")
 
 # ---------------- ROLE ----------------
 role = st.radio("Login as:", ["User", "Admin"])
@@ -80,11 +80,10 @@ if role == "User":
     # ---------- TOP ----------
     st.markdown(f"""
     <div class="top">
-    💰 ₹{pg.get('rent')} | ⏰ {pg.get('curfew')} | 🚭 {pg.get('smoking')} | 👥 {pg.get('guests_allowed')}
+    ⏰ {pg.get('curfew')} | 🚭 {pg.get('smoking')} | 👥 {pg.get('guests_allowed')}
     </div>
     """, unsafe_allow_html=True)
 
-    # ---------- SECTIONS ----------
     def card(title, content):
         st.markdown(f"""
         <div class="card">
@@ -93,14 +92,11 @@ if role == "User":
         </div>
         """, unsafe_allow_html=True)
 
-    card("💰 Money",
-         f"Rent: ₹{pg.get('rent')}<br>Advance: ₹{pg.get('advance')}<br>Refund: {pg.get('refund_policy')}")
-
     card("⏰ Freedom",
          f"Curfew: {pg.get('curfew')}<br>Late Entry: {pg.get('late_entry')}<br>Visitors: {pg.get('visitors_time')}")
 
     card("🚭 Lifestyle",
-         f"Smoking: {pg.get('smoking')}<br>Alcohol: {pg.get('alcohol')}<br>Guests: {pg.get('guests_allowed')}")
+         f"Smoking: {pg.get('smoking')}<br>Alcohol: {pg.get('alcohol')}")
 
     card("🧹 Daily Life",
          f"Cleaning: {pg.get('cleaning')}<br>Breakfast: {pg.get('breakfast_time')}<br>Dinner: {pg.get('dinner_time')}")
@@ -110,7 +106,7 @@ if role == "User":
 
     st.caption(f"🕒 Last Updated: {pg.get('timestamp','N/A')}")
 
-    agree = st.checkbox("I agree")
+    agree = st.checkbox("I agree to rules")
     if agree:
         st.success("Proceed to booking")
     else:
@@ -119,48 +115,42 @@ if role == "User":
 # ================= ADMIN =================
 if role == "Admin":
 
-    st.subheader("Admin Panel")
+    st.subheader("🛠 Manage PG Rules")
 
     rules_sheet = client.open_by_key(RULES_ID).worksheet("rules")
     rules_df = load_sheet(RULES_ID, "rules")
 
     pg_name = st.selectbox("Select PG", pg_names)
 
-    pg_rows = rules_df[rules_df["pg_name"] == pg_name] if not rules_df.empty else pd.DataFrame()
-
-    if not pg_rows.empty:
-        latest = pg_rows.iloc[-1]
-        st.info(f"Last updated: {latest.get('timestamp')}")
-
-    # -------- FORM --------
-    rent = st.number_input("Rent", 0)
-    advance = st.number_input("Advance", 0)
-    refund_policy = st.text_input("Refund")
-    notice_days = st.number_input("Notice", 0)
-
+    # ---------- FORM UI ----------
+    st.markdown("### 📜 Basic Rules")
     guests_allowed = st.selectbox("Guests", ["Yes","No"])
     cleaning = st.selectbox("Cleaning", ["Daily","Weekly","Monthly"])
 
-    curfew = st.text_input("Curfew")
+    st.markdown("### 🔒 Advanced Rules")
+    curfew = st.text_input("Curfew Time")
     smoking = st.selectbox("Smoking", ["No","Yes"])
     alcohol = st.selectbox("Alcohol", ["No","Yes"])
     late_entry = st.selectbox("Late Entry", ["No","Yes"])
-    visitors_time = st.text_input("Visitors")
+    visitors_time = st.text_input("Visitors Timing")
 
-    wifi = st.selectbox("WiFi", ["Yes","No"])
-    laundry = st.selectbox("Laundry", ["Yes","No"])
-    parking = st.selectbox("Parking", ["Yes","No"])
-    power_backup = st.selectbox("Power", ["Yes","No"])
-    room_type = st.selectbox("Room", ["AC","Non-AC","Both"])
+    st.markdown("### 📅 Notice")
+    notice_days = st.number_input("Notice Days", 0)
 
-    breakfast_time = st.text_input("Breakfast")
-    dinner_time = st.text_input("Dinner")
+    st.markdown("### 🍛 Food")
+    breakfast_time = st.text_input("Breakfast Time")
+    dinner_time = st.text_input("Dinner Time")
 
-    # -------- SAVE --------
+    # ---------- SAVE ----------
     if st.button("💾 Save / Update"):
 
         all_data = rules_sheet.get_all_values()
-        header = all_data[0]
+
+        header = all_data[0] if all_data else [
+            "pg_name","notice_days","breakfast_time","dinner_time",
+            "guests_allowed","cleaning","curfew","smoking",
+            "alcohol","late_entry","visitors_time","timestamp"
+        ]
 
         new_data = [header] + [
             row for row in all_data[1:]
@@ -168,44 +158,57 @@ if role == "Admin":
         ]
 
         new_data.append([
-            pg_name, rent, advance, refund_policy, notice_days,
-            breakfast_time, dinner_time,
-            guests_allowed, cleaning, curfew,
-            smoking, alcohol, late_entry, visitors_time,
-            wifi, laundry, parking, power_backup, room_type,
+            pg_name,
+            notice_days,
+            breakfast_time,
+            dinner_time,
+            guests_allowed,
+            cleaning,
+            curfew,
+            smoking,
+            alcohol,
+            late_entry,
+            visitors_time,
             str(datetime.now())
         ])
 
         rules_sheet.clear()
         rules_sheet.update("A1", new_data)
+
         st.cache_data.clear()
-        st.success("Updated")
+        st.success("✅ Rules updated")
         st.rerun()
 
-    # -------- APPLY ALL --------
+    # ---------- APPLY ALL ----------
     if st.button("⚡ Apply to All PGs"):
 
         header = [
-            "pg_name","rent","advance","refund_policy","notice_days",
-            "breakfast_time","dinner_time","guests_allowed","cleaning",
-            "curfew","smoking","alcohol","late_entry","visitors_time",
-            "wifi","laundry","parking","power_backup","room_type","timestamp"
+            "pg_name","notice_days","breakfast_time","dinner_time",
+            "guests_allowed","cleaning","curfew","smoking",
+            "alcohol","late_entry","visitors_time","timestamp"
         ]
 
         new_data = [header]
 
         for name in pg_names:
             new_data.append([
-                name, rent, advance, refund_policy, notice_days,
-                breakfast_time, dinner_time,
-                guests_allowed, cleaning, curfew,
-                smoking, alcohol, late_entry, visitors_time,
-                wifi, laundry, parking, power_backup, room_type,
+                name,
+                notice_days,
+                breakfast_time,
+                dinner_time,
+                guests_allowed,
+                cleaning,
+                curfew,
+                smoking,
+                alcohol,
+                late_entry,
+                visitors_time,
                 str(datetime.now())
             ])
 
         rules_sheet.clear()
         rules_sheet.update("A1", new_data)
+
         st.cache_data.clear()
-        st.success("Applied to all PGs")
+        st.success("⚡ Applied to all PGs")
         st.rerun()
